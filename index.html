@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visualizador de Arquivos ZIP</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        justify-content: center;
+        height: 100vh;
+      }
+      .paper {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        width: 800px;
+        overflow-y: scroll;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .filters {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        gap: 10px;
+      }
+      input[type="text"] {
+        width: 80%;
+        padding: 10px;
+        margin: 5px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .tree-view {
+        text-align: left;
+      }
+      .folder,
+      .file {
+        padding: 5px;
+        margin: 5px;
+      }
+      .folder {
+        font-weight: bold;
+      }
+      .loading {
+        display: none;
+        font-size: 16px;
+        color: #555;
+        margin-top: 10px;
+      }
+      /* Estilos do modal */
+      #pdfModal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+      }
+      .modal-content {
+        background: white;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 80%;
+        max-width: 900px;
+        position: relative;
+      }
+      .close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 20px;
+        cursor: pointer;
+      }
+      iframe {
+        width: 100%;
+        height: 600px;
+        border: none;
+      }
+      .folder .toggle-btn {
+        margin-right: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .sub-tree {
+        margin-left: 20px;
+        display: none;
+      }
+
+      .folder.open .fa-chevron-down {
+        transform: rotate(0deg);
+      }
+
+      .folder .fa-chevron-right {
+        transform: rotate(-90deg);
+      }
+
+      .folder.open + .sub-tree {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="paper">
+        <h1>Visualizador de Arquivos ZIP</h1>
+        <input type="file" id="zipInput" accept=".zip" />
+        <p id="loadingMessage" class="loading">
+          <i class="fas fa-spinner fa-spin"></i> Carregando arquivo...
+        </p>
+
+        <div class="filters">
+          <input
+            type="text"
+            id="searchFolders"
+            placeholder="Buscar setores e processos..."
+          />
+          <input
+            type="text"
+            id="searchDocs"
+            placeholder="Buscar documentos..."
+          />
+        </div>
+
+        <div id="fileTree" class="tree-view">
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para exibir o PDF -->
+    <div id="pdfModal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <iframe id="pdfViewer"></iframe>
+      </div>
+    </div>
+
+    <script>
+      async function processZip(zip, fileTree) {
+        fileTree.innerHTML = "";
+
+        const folders = {}; // Mapeia pastas para evitar duplicação
+
+        for (const fileName of Object.keys(zip.files)) {
+          const fileData = zip.files[fileName];
+
+          const pathParts = fileName.split("/");
+          const isFolder = fileName.endsWith("/");
+          const parentPath = pathParts.slice(0, -1).join("/"); // Caminho da pasta pai
+          const fileOrFolderName = pathParts[pathParts.length - 1];
+
+          let parentElement = fileTree;
+
+          if (parentPath) {
+            if (!folders[parentPath]) {
+              // Criar a pasta pai se ainda não existir
+              folders[parentPath] = createFolder(parentPath, fileTree);
+            }
+            parentElement = folders[parentPath]; // Ajusta o local correto para inserir arquivos
+          }
+
+          if (isFolder) {
+            folders[fileName] = createFolder(fileOrFolderName, parentElement);
+          } else if (fileOrFolderName.endsWith(".zip")) {
+            // Arquivo ZIP dentro do ZIP
+            await processInnerZip(fileData, fileOrFolderName, parentElement);
+          } else if (fileOrFolderName.endsWith(".pdf")) {
+            // Arquivo PDF
+            createPdfFile(fileData, fileOrFolderName, parentElement);
+          } else {
+            // Outros arquivos
+            createGenericFile(fileOrFolderName, parentElement);
+          }
+        }
+      }
+
+      // Função para criar pastas corretamente
+      function createFolder(folderName, parentElement) {
+        const folderElement = document.createElement("div");
+        folderElement.classList.add("folder");
+
+        const toggleBtn = document.createElement("i");
+        toggleBtn.classList.add("fas", "fa-chevron-right", "toggle-btn");
+        toggleBtn.style.cursor = "pointer";
+
+        const folderSpan = document.createElement("span");
+        folderSpan.innerHTML = `<i class="fas fa-folder"></i> ${folderName}`;
+
+        folderElement.appendChild(toggleBtn);
+        folderElement.appendChild(folderSpan);
+
+        const subTree = document.createElement("div");
+        subTree.classList.add("sub-tree");
+        subTree.style.display = "none";
+
+        toggleBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isOpen = subTree.style.display === "block";
+          subTree.style.display = isOpen ? "none" : "block";
+          toggleBtn.classList.toggle("fa-chevron-down", !isOpen);
+          toggleBtn.classList.toggle("fa-chevron-right", isOpen);
+        });
+
+        parentElement.appendChild(folderElement);
+        parentElement.appendChild(subTree);
+
+        return subTree;
+      }
+
+      // Função para processar ZIP dentro de ZIP
+      async function processInnerZip(fileData, fileName, parentElement) {
+        const zipElement = document.createElement("div");
+        zipElement.classList.add("file");
+        zipElement.innerHTML = `<i class="fas fa-file-archive"></i> ${fileName} (Extraindo...)`;
+
+        parentElement.appendChild(zipElement);
+
+        try {
+          const zipContent = await fileData.async("arraybuffer");
+          const newZip = await JSZip.loadAsync(zipContent);
+
+          if (!newZip.files || Object.keys(newZip.files).length === 0) {
+            zipElement.innerHTML = `<i class="fas fa-file-archive"></i> ${fileName} (ZIP vazio ou inválido)`;
+            return;
+          }
+
+          const subTree = createFolder(fileName, parentElement);
+          await processZip(newZip, subTree);
+          zipElement.innerHTML = `<i class="fas fa-file-archive"></i> ${fileName} (Extraído)`;
+        } catch (error) {
+          console.error("Erro ao extrair ZIP:", error);
+          zipElement.innerHTML = `<i class="fas fa-file-archive"></i> ${fileName} (Erro ao extrair)`;
+        }
+      }
+
+      // Função para criar arquivos PDF
+      function createPdfFile(fileData, fileName, parentElement) {
+        const fileElement = document.createElement("div");
+        fileElement.classList.add("file");
+        fileElement.innerHTML = `<i class="fas fa-file-pdf"></i> ${fileName} <i class="fas fa-eye view-btn"></i>`;
+
+        fileElement.addEventListener("click", async () => {
+          const pdfBlob = await fileData.async("blob");
+          const pdfUrl = URL.createObjectURL(
+            new Blob([pdfBlob], { type: "application/pdf" })
+          );
+          openPdfModal(pdfUrl);
+        });
+
+        parentElement.appendChild(fileElement);
+      }
+
+      function createGenericFile(fileName, parentElement) {
+        const fileElement = document.createElement("div");
+        fileElement.classList.add("file");
+        fileElement.innerHTML = `<i class="fas fa-file"></i> ${fileName}`;
+
+        parentElement.appendChild(fileElement);
+      }
+
+      async function processZipContent(fileData, subTree) {
+        if (fileData.dir) {
+          await processZip(fileData, subTree);
+        } else if (fileData && fileData.name) {
+          const element = document.createElement("div");
+          element.classList.add("file");
+          element.innerHTML = `<i class="fas fa-file"></i> ${fileData.name}`;
+          subTree.appendChild(element);
+        } else {
+          console.error("Erro: fileData não contém informações válidas.");
+        }
+      }
+
+      document
+        .getElementById("zipInput")
+        .addEventListener("change", function (event) {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            const loadingMessage = document.getElementById("loadingMessage");
+            const fileTree = document.getElementById("fileTree");
+
+            loadingMessage.style.display = "block";
+            fileTree.innerHTML = "";
+
+            reader.onload = async function (e) {
+              const zip = await JSZip.loadAsync(e.target.result);
+              loadingMessage.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> Processando arquivos...';
+
+              setTimeout(async () => {
+                await processZip(zip, fileTree);
+                loadingMessage.style.display = "none";
+              }, 1500);
+            };
+            reader.readAsArrayBuffer(file);
+          }
+        });
+
+      function openPdfModal(pdfUrl) {
+        const pdfViewer = document.getElementById("pdfViewer");
+        pdfViewer.src = pdfUrl;
+        pdfViewer.type = "application/pdf";
+        document.getElementById("pdfModal").style.display = "block";
+      }
+
+      function closeModal() {
+        document.getElementById("pdfModal").style.display = "none";
+        document.getElementById("pdfViewer").src = "";
+      }
+
+      window.onclick = function (event) {
+        const modal = document.getElementById("pdfModal");
+        if (event.target === modal) {
+          closeModal();
+        }
+      };
+    </script>
+  </body>
+</html>
