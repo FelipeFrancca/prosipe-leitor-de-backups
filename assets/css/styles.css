@@ -147,7 +147,7 @@ input[type="file"] {
 }
 
 #pdfModal {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   position: fixed;
