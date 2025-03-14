@@ -30,8 +30,8 @@ async function processZip(zip, fileTree) {
       createGenericFile(fileOrFolderName, parentElement);
     }
   }
-  const searchInput = document.getElementById("searchInput");
-  searchInput.disabled = false;
+
+  document.getElementById("searchInput").disabled = false;
 }
 
 function createFolder(folderName, parentElement) {
@@ -92,28 +92,28 @@ async function processInnerZip(fileData, fileName, parentElement) {
 }
 
 function createPdfFile(fileData, fileName, parentElement) {
-    const fileElement = document.createElement("div");
-    fileElement.classList.add("file");
-  
-    // Substituindo os ícones por uma imagem de miniatura de PDF
-    fileElement.innerHTML = `
-      <div class="pdf-card">
-        <img src="./assets/img/pdf.png" alt="PDF" class="pdf-thumbnail">
-        <span class="pdf-name">${fileName}</span>
-      </div>
-    `;
-  
-    fileElement.addEventListener("click", async () => {
+  const fileElement = document.createElement("div");
+  fileElement.classList.add("file");
+
+  fileElement.innerHTML = `
+    <div class="pdf-card">
+      <input type="checkbox" class="pdf-checkbox">
+      <img src="./assets/img/pdf.png" alt="PDF" class="pdf-thumbnail">
+      <span class="pdf-name">${fileName}</span>
+    </div>
+  `;
+
+  fileElement.addEventListener("click", async (event) => {
+    if (event.target.tagName !== "INPUT") {
       const pdfBlob = await fileData.async("blob");
-      const pdfUrl = URL.createObjectURL(
-        new Blob([pdfBlob], { type: "application/pdf" })
-      );
+      const pdfUrl = URL.createObjectURL(pdfBlob);
       openPdfModal(pdfUrl);
-    });
-  
-    parentElement.appendChild(fileElement);
-  }
-  
+      URL.revokeObjectURL(pdfUrl);
+    }
+  });
+  fileElement.fileData = fileData;
+  parentElement.appendChild(fileElement);
+}
 
 function createGenericFile(fileName, parentElement) {
   const fileElement = document.createElement("div");
@@ -142,25 +142,68 @@ document
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      const loadingMessage = document.getElementById("loadingMessage");
       const fileTree = document.getElementById("fileTree");
 
-      loadingMessage.style.display = "block";
-      fileTree.innerHTML = "";
+      Swal.fire({
+        title: "Carregando ZIP...",
+        html: "Por favor, aguarde enquanto os arquivos estão sendo processados.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
       reader.onload = async function (e) {
-        const zip = await JSZip.loadAsync(e.target.result);
-        loadingMessage.innerHTML =
-          '<i class="fas fa-spinner fa-spin"></i> Espere mais um pouco, os arquivos estão sendo carregados';
-
-        setTimeout(async () => {
+        try {
+          const zip = await JSZip.loadAsync(e.target.result);
           await processZip(zip, fileTree);
-          loadingMessage.style.display = "none";
-        }, 1500);
+          Swal.close();
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Erro ao processar o ZIP",
+            text: error.message,
+          });
+        }
       };
+
       reader.readAsArrayBuffer(file);
     }
   });
+
+document
+  .getElementById("downloadSelected")
+  .addEventListener("click", async () => {
+    const checkboxes = document.querySelectorAll(".pdf-checkbox:checked");
+    if (checkboxes.length === 0) return;
+
+    const zip = new JSZip();
+    let docCounter = 1;
+
+    for (const checkbox of checkboxes) {
+      const fileElement = checkbox.closest(".file");
+      const fileName = `documento_${docCounter}.pdf`;
+      const fileData = fileElement.fileData;
+      const blob = await fileData.async("blob");
+
+      zip.file(fileName, blob);
+      docCounter++;
+    }
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Leitor PROSIPE - PDFs Selecionados.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+document.getElementById("fileTree").addEventListener("change", function () {
+  const checkboxes = document.querySelectorAll(".pdf-checkbox:checked");
+  const downloadButton = document.getElementById("downloadSelected");
+  downloadButton.disabled = checkboxes.length === 0;
+});
 
 function openPdfModal(pdfUrl) {
   const pdfViewer = document.getElementById("pdfViewer");
@@ -181,7 +224,7 @@ window.onclick = function (event) {
   }
 };
 
-document.getElementById("searchInput").addEventListener("input", function () {
+document.getElementById("searchInput").addEventListener("click", function () {
   if (this.disabled) {
     Swal.fire({
       icon: "warning",
