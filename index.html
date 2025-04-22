@@ -31,8 +31,8 @@
 
         <label for="zipInput" class="dropzone">
           <i class="fas fa-cloud-upload-alt"></i>
-          <p>Selecione um arquivo .zip em seu computador, para leitura.</p>
-          <input type="file" id="zipInput" accept=".zip" hidden />
+          <p>Selecione um ou mais arquivos .zip em seu computador, para leitura.</p>
+          <input type="file" id="zipInput" accept=".zip" hidden multiple />
         </label>
 
         <p id="loadingMessage" class="loading">
@@ -48,7 +48,6 @@
       </div>
     </div>
 
-    <!-- Modal para exibir o PDF -->
     <div id="pdfModal">
       <div class="modal-content">
         <h2 id="modalTitle"></h2>
@@ -57,7 +56,6 @@
       </div>
     </div>
     
-    <!-- Template for select-all checkbox -->
     <template id="selectAllTemplate">
       <div class="folder-controls">
         <div class="select-all-wrapper">

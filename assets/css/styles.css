@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   background-color: #f4f4f4;
   min-height: 100vh;
 }
@@ -105,7 +105,6 @@ body {
   color: #ff3500;
 }
 
-/* File Tree Styling */
 .tree-view {
   margin-top: 25px;
   width: 100%;
@@ -136,7 +135,7 @@ body {
 }
 
 .folder span i {
-  color: #FBBC04;
+  color: #fbbc04;
   margin-right: 8px;
   font-size: 18px;
 }
@@ -153,7 +152,6 @@ body {
   border-left: 1px dashed #ddd;
 }
 
-/* File Grid Layout */
 .file-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -161,7 +159,8 @@ body {
   margin: 10px 0 10px 25px;
 }
 
-.pdf-file, .generic-file {
+.pdf-file,
+.generic-file {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -175,7 +174,8 @@ body {
   height: 100%;
 }
 
-.pdf-file:hover, .generic-file:hover {
+.pdf-file:hover,
+.generic-file:hover {
   transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   border-color: #ccc;
@@ -225,10 +225,9 @@ body {
 .generic-file i {
   font-size: 28px;
   margin-bottom: 10px;
-  color: #4285F4;
+  color: #4285f4;
 }
 
-/* Download Button Styling */
 #downloadSelected {
   display: block;
   margin: 20px auto;
@@ -255,7 +254,6 @@ body {
   color: #666;
 }
 
-/* Dropzone Styling */
 .dropzone {
   border: 2px dashed #ccc;
   border-radius: 10px;
@@ -290,7 +288,6 @@ body {
   border-color: #ff3500;
 }
 
-/* Modal Styling */
 #pdfModal {
   display: none;
   position: fixed;
@@ -351,7 +348,6 @@ iframe {
   background-color: #f5f5f5;
 }
 
-/* Select All Option */
 .select-all-wrapper {
   display: flex;
   align-items: center;
@@ -365,21 +361,20 @@ iframe {
   margin-right: 8px;
 }
 
-/* Responsive Design */
 @media (max-width: 1024px) {
   .container {
     margin-top: 120px;
     padding: 15px;
   }
-  
+
   .paper {
     padding: 20px;
   }
-  
+
   .file-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
-  
+
   .modal-content {
     width: 95%;
     height: 90%;
@@ -392,39 +387,40 @@ iframe {
     padding: 15px;
     min-height: 120px;
   }
-  
+
   .appbar img {
     width: 15rem;
   }
-  
+
   .inputPesquisa {
     width: 90%;
     margin-bottom: 10px;
   }
-  
+
   .container {
     margin-top: 160px;
     padding: 10px;
   }
-  
+
   .paper {
     padding: 15px;
   }
-  
+
   .file-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
   }
-  
-  .pdf-file, .generic-file {
+
+  .pdf-file,
+  .generic-file {
     padding: 10px 8px;
   }
-  
+
   .pdf-thumbnail {
     width: 40px;
     height: 40px;
   }
-  
+
   h1 {
     font-size: 24px;
   }
@@ -435,47 +431,47 @@ iframe {
     margin-top: 180px;
     padding: 8px;
   }
-  
+
   .paper {
     padding: 12px;
   }
-  
+
   .file-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 8px;
   }
-  
+
   .pdf-name {
     font-size: 12px;
   }
-  
+
   .pdf-thumbnail {
     width: 35px;
     height: 35px;
   }
-  
+
   .dropzone {
     padding: 20px;
   }
-  
+
   .dropzone i {
     font-size: 32px;
   }
-  
+
   .dropzone p {
     font-size: 14px;
   }
-  
+
   #downloadSelected {
     padding: 10px 16px;
     font-size: 14px;
   }
-  
+
   h1 {
     font-size: 20px;
     margin-bottom: 15px;
   }
-  
+
   .modal-content {
     padding: 15px;
     width: 98%;
@@ -488,18 +484,29 @@ iframe {
   }
 }
 
-/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideDown {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-.folder, .pdf-file, .generic-file {
+.folder,
+.pdf-file,
+.generic-file {
   animation: fadeIn 0.3s ease;
 }
 
@@ -507,7 +514,6 @@ iframe {
   animation: slideDown 0.3s ease;
 }
 
-/* Utility Classes */
 .text-center {
   text-align: center;
 }
@@ -520,7 +526,6 @@ iframe {
   margin-top: 10px;
 }
 
-/* Loading Bar */
 .progress-bar {
   height: 4px;
   background-color: #f0f0f0;
@@ -539,7 +544,6 @@ iframe {
   transition: width 0.3s ease;
 }
 
-/* Select All Controls */
 .folder-controls {
   display: flex;
   align-items: center;
@@ -560,4 +564,100 @@ iframe {
 
 .select-all-btn:hover {
   background-color: #e0e0e0;
+}
+
+.folder.main-zip-folder {
+  background-color: #000022;
+  color: white;
+  border-left: 4px solid #ff3500;
+}
+
+.folder.main-zip-folder i.fa-folder {
+  color: #ff3500;
+}
+
+.folder.main-zip-folder i.toggle-btn {
+  color: white;
+}
+
+.processing-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.processing-indicator i {
+  margin-right: 5px;
+  color: #ff3500;
+}
+
+.progress-bar {
+  height: 6px;
+  background-color: #f0f0f0;
+  border-radius: 3px;
+  margin: 15px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #ff3500;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: width 0.3s ease;
+}
+
+.dropzone {
+  position: relative;
+}
+
+.dropzone::after {
+  content: "Múltiplos arquivos permitidos";
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: #777;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+#downloadSelected {
+  background-color: #000022;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto;
+}
+
+#downloadSelected::before {
+  content: "\f019";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  margin-right: 8px;
+}
+
+#downloadSelected:hover:not(:disabled) {
+  background-color: #000044;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 34, 0.2);
+}
+
+#downloadSelected:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  color: #666;
 }

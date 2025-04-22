@@ -1,5 +1,4 @@
 async function processZip(zip, fileTree) {
-  fileTree.innerHTML = "";
   const loadingIndicator = document.getElementById("loadingMessage");
   loadingIndicator.style.display = "block";
 
@@ -84,20 +83,6 @@ async function processZip(zip, fileTree) {
       });
     }
 
-    let totalPdfCount = 0;
-    const folderPdfCounts = {};
-
-    for (const [folderPath, files] of Object.entries(filesByFolder)) {
-      let pdfCount = 0;
-      for (const file of files) {
-        if (file.name.toLowerCase().endsWith(".pdf")) {
-          pdfCount++;
-          totalPdfCount++;
-        }
-      }
-      folderPdfCounts[folderPath] = pdfCount;
-    }
-
     for (const [folderPath, files] of Object.entries(filesByFolder)) {
       const parentElement =
         folderPath === "root" ? fileTree : folders[folderPath];
@@ -107,7 +92,10 @@ async function processZip(zip, fileTree) {
       fileGrid.classList.add("file-grid");
       fileGrid.setAttribute("data-folder-path", folderPath);
 
-      const pdfCount = folderPdfCounts[folderPath] || 0;
+      // Contagem de PDFs na pasta
+      const pdfFiles = files.filter(file => file.name.toLowerCase().endsWith(".pdf"));
+      const pdfCount = pdfFiles.length;
+      
       if (pdfCount > 0) {
         const selectAllControl = document.createElement("div");
         selectAllControl.classList.add("folder-controls");
@@ -117,7 +105,7 @@ async function processZip(zip, fileTree) {
 
         const selectAllCheckbox = document.createElement("input");
         selectAllCheckbox.type = "checkbox";
-        selectAllCheckbox.classList.add("select-all-checkbox");
+        selectAllCheckbox.classList.add("select-all-checkbox", "folder-checkbox");
         selectAllCheckbox.setAttribute("data-folder-path", folderPath);
 
         const selectAllLabel = document.createElement("label");
@@ -160,74 +148,7 @@ async function processZip(zip, fileTree) {
     }
 
     progressBar.style.display = "none";
-
-    if (totalPdfCount > 0) {
-      const globalSelectAllControl = document.createElement("div");
-      globalSelectAllControl.classList.add("folder-controls");
-      globalSelectAllControl.style.marginLeft = "0";
-      globalSelectAllControl.style.padding = "10px";
-      globalSelectAllControl.style.backgroundColor = "#f0f2f5";
-      globalSelectAllControl.style.borderRadius = "6px";
-      globalSelectAllControl.style.marginBottom = "15px";
-
-      const globalSelectAllWrapper = document.createElement("div");
-      globalSelectAllWrapper.classList.add("select-all-wrapper");
-      globalSelectAllWrapper.style.backgroundColor = "transparent";
-
-      const globalSelectAllCheckbox = document.createElement("input");
-      globalSelectAllCheckbox.type = "checkbox";
-      globalSelectAllCheckbox.id = "globalSelectAll";
-      globalSelectAllCheckbox.classList.add("select-all-checkbox");
-
-      const globalSelectAllLabel = document.createElement("label");
-      globalSelectAllLabel.textContent = `Selecionar todos os ${totalPdfCount} PDFs`;
-      globalSelectAllLabel.id = "globalSelectAllLabel";
-      globalSelectAllLabel.style.fontWeight = "bold";
-
-      globalSelectAllWrapper.appendChild(globalSelectAllCheckbox);
-      globalSelectAllWrapper.appendChild(globalSelectAllLabel);
-      globalSelectAllControl.appendChild(globalSelectAllWrapper);
-
-      const treeView = document.querySelector(".tree-view");
-      treeView.insertBefore(globalSelectAllControl, treeView.firstChild);
-
-      globalSelectAllCheckbox.addEventListener("change", function () {
-        const visiblePdfCheckboxes = Array.from(
-          document.querySelectorAll(".pdf-checkbox")
-        ).filter((checkbox) => {
-          const fileElement = checkbox.closest(".pdf-file");
-          return fileElement.style.display !== "none";
-        });
-
-        visiblePdfCheckboxes.forEach((checkbox) => {
-          checkbox.checked = this.checked;
-        });
-
-        const visibleFolderSelectAllCheckboxes = Array.from(
-          document.querySelectorAll(".folder-controls .select-all-checkbox")
-        ).filter((checkbox) => {
-          const folderPath = checkbox.getAttribute("data-folder-path");
-          if (!folderPath) return false;
-
-          const fileGrid = document.querySelector(
-            `.file-grid[data-folder-path="${folderPath}"]`
-          );
-          if (!fileGrid) return false;
-
-          const visiblePdfs = Array.from(
-            fileGrid.querySelectorAll(".pdf-file")
-          ).filter((pdf) => pdf.style.display !== "none");
-
-          return visiblePdfs.length > 0;
-        });
-
-        visibleFolderSelectAllCheckboxes.forEach((checkbox) => {
-          checkbox.checked = this.checked;
-        });
-
-        updateDownloadButtonState();
-      });
-    }
+    updateGlobalSelectAllControl();
   } catch (error) {
     console.error("Error processing ZIP:", error);
     Swal.fire({
@@ -344,7 +265,9 @@ function createPdfFile(fileData, fileName, parentElement) {
     if (event.target.tagName !== "INPUT") {
       try {
         const pdfBlob = await fileData.async("blob");
-        const pdfUrl = URL.createObjectURL(pdfBlob);
+        // Criar um novo blob com o tipo MIME correto para PDFs
+        const pdfBlobWithCorrectType = new Blob([pdfBlob], { type: 'application/pdf' });
+        const pdfUrl = URL.createObjectURL(pdfBlobWithCorrectType);
         openPdfModal(pdfUrl, fileName);
       } catch (error) {
         console.error("Error loading PDF:", error);
@@ -355,6 +278,14 @@ function createPdfFile(fileData, fileName, parentElement) {
         });
       }
     }
+  });
+
+  // Adicionar evento de change para a checkbox
+  const checkbox = fileElement.querySelector(".pdf-checkbox");
+  checkbox.addEventListener("change", function() {
+    updateDownloadButtonState();
+    updateGlobalSelectAllState();
+    updateFolderCheckboxState(this);
   });
 
   fileElement.fileData = fileData;
@@ -422,6 +353,7 @@ function closeModal() {
   }
 }
 
+// Função atualizada para contabilizar PDFs selecionados
 function updateDownloadButtonState() {
   const checkboxes = document.querySelectorAll(".pdf-checkbox:checked");
   const downloadButton = document.getElementById("downloadSelected");
@@ -429,32 +361,153 @@ function updateDownloadButtonState() {
   downloadButton.textContent = `Baixar ${checkboxes.length} PDFs Selecionados`;
 }
 
+// Função para atualizar o estado da checkbox "Selecionar todos" de uma pasta
+function updateFolderCheckboxState(checkbox) {
+  const fileElement = checkbox.closest(".pdf-file");
+  if (!fileElement) return;
+  
+  // Encontrar a grade de arquivos pai
+  const fileGrid = fileElement.closest(".file-grid");
+  if (!fileGrid) return;
+  
+  const folderPath = fileGrid.getAttribute("data-folder-path");
+  if (!folderPath) return;
+  
+  // Encontrar a checkbox "Selecionar todos" para esta pasta
+  const folderCheckbox = document.querySelector(`.select-all-checkbox[data-folder-path="${folderPath}"]`);
+  if (!folderCheckbox) return;
+  
+  // Verificar todas as checkboxes visíveis na grade
+  const visibleCheckboxes = Array.from(fileGrid.querySelectorAll(".pdf-checkbox")).filter(cb => {
+    const el = cb.closest(".pdf-file");
+    return el.style.display !== "none";
+  });
+  
+  const allChecked = visibleCheckboxes.every(cb => cb.checked);
+  const someChecked = visibleCheckboxes.some(cb => cb.checked);
+  
+  folderCheckbox.checked = allChecked;
+  folderCheckbox.indeterminate = someChecked && !allChecked;
+}
+
+// Função para criar o controle global "Selecionar todos"
+function createGlobalSelectAllControl() {
+  // Remover controle global existente se houver
+  const existingControl = document.getElementById("globalSelectAllControl");
+  if (existingControl) {
+    existingControl.remove();
+  }
+  
+  const globalSelectAllControl = document.createElement("div");
+  globalSelectAllControl.classList.add("folder-controls");
+  globalSelectAllControl.id = "globalSelectAllControl";
+  globalSelectAllControl.style.marginLeft = "0";
+  globalSelectAllControl.style.padding = "10px";
+  globalSelectAllControl.style.backgroundColor = "#f0f2f5";
+  globalSelectAllControl.style.borderRadius = "6px";
+  globalSelectAllControl.style.marginBottom = "15px";
+
+  const globalSelectAllWrapper = document.createElement("div");
+  globalSelectAllWrapper.classList.add("select-all-wrapper");
+  globalSelectAllWrapper.style.backgroundColor = "transparent";
+
+  const globalSelectAllCheckbox = document.createElement("input");
+  globalSelectAllCheckbox.type = "checkbox";
+  globalSelectAllCheckbox.id = "globalSelectAll";
+  globalSelectAllCheckbox.classList.add("select-all-checkbox");
+
+  const globalSelectAllLabel = document.createElement("label");
+  globalSelectAllLabel.id = "globalSelectAllLabel";
+  globalSelectAllLabel.style.fontWeight = "bold";
+  
+  // Contar PDFs
+  const totalPdfCount = document.querySelectorAll(".pdf-file").length;
+  globalSelectAllLabel.textContent = `Selecionar todos os ${totalPdfCount} PDFs`;
+
+  globalSelectAllWrapper.appendChild(globalSelectAllCheckbox);
+  globalSelectAllWrapper.appendChild(globalSelectAllLabel);
+  globalSelectAllControl.appendChild(globalSelectAllWrapper);
+
+  // Verificar se há PDFs antes de adicionar o controle
+  if (totalPdfCount > 0) {
+    const treeView = document.querySelector(".tree-view");
+    treeView.insertBefore(globalSelectAllControl, treeView.firstChild);
+
+    globalSelectAllCheckbox.addEventListener("change", function () {
+      const visiblePdfCheckboxes = Array.from(
+        document.querySelectorAll(".pdf-checkbox")
+      ).filter((checkbox) => {
+        const fileElement = checkbox.closest(".pdf-file");
+        return fileElement.style.display !== "none";
+      });
+
+      visiblePdfCheckboxes.forEach((checkbox) => {
+        checkbox.checked = this.checked;
+      });
+
+      // Atualizar todas as checkboxes de pasta
+      const visibleFolderSelectAllCheckboxes = Array.from(
+        document.querySelectorAll(".folder-checkbox")
+      );
+
+      visibleFolderSelectAllCheckboxes.forEach((checkbox) => {
+        checkbox.checked = this.checked;
+        checkbox.indeterminate = false;
+      });
+
+      updateDownloadButtonState();
+    });
+    
+    return true;
+  }
+  
+  return false;
+}
+
+// Função para atualizar o estado do controle global "Selecionar todos"
+function updateGlobalSelectAllState() {
+  const globalCheckbox = document.getElementById("globalSelectAll");
+  if (!globalCheckbox) return;
+  
+  const visiblePdfCheckboxes = Array.from(
+    document.querySelectorAll(".pdf-checkbox")
+  ).filter((checkbox) => {
+    const fileElement = checkbox.closest(".pdf-file");
+    return fileElement.style.display !== "none";
+  });
+  
+  const allChecked = visiblePdfCheckboxes.length > 0 && 
+    visiblePdfCheckboxes.every(cb => cb.checked);
+  
+  const someChecked = visiblePdfCheckboxes.some(cb => cb.checked);
+  
+  globalCheckbox.checked = allChecked;
+  globalCheckbox.indeterminate = someChecked && !allChecked;
+}
+
+// Função para atualizar o controle global "Selecionar todos"
+function updateGlobalSelectAllControl() {
+  // Verificar se já existe um controle global
+  if (!document.getElementById("globalSelectAllControl")) {
+    createGlobalSelectAllControl();
+  } else {
+    // Atualizar a contagem de PDFs
+    const totalPdfCount = document.querySelectorAll(".pdf-file").length;
+    const globalSelectAllLabel = document.getElementById("globalSelectAllLabel");
+    if (globalSelectAllLabel) {
+      globalSelectAllLabel.textContent = `Selecionar todos os ${totalPdfCount} PDFs`;
+    }
+    
+    updateGlobalSelectAllState();
+  }
+}
+
 function updateSelectAllCheckboxes() {
   document
     .querySelectorAll(".folder-controls .select-all-checkbox")
     .forEach((selectAllCheckbox) => {
       if (selectAllCheckbox.id === "globalSelectAll") {
-        const visiblePdfCheckboxes = Array.from(
-          document.querySelectorAll(".pdf-checkbox")
-        ).filter((checkbox) => {
-          const fileElement = checkbox.closest(".pdf-file");
-          return fileElement.style.display !== "none";
-        });
-
-        const checkedVisiblePdfCheckboxes = visiblePdfCheckboxes.filter(
-          (checkbox) => checkbox.checked
-        );
-
-        selectAllCheckbox.checked =
-          visiblePdfCheckboxes.length > 0 &&
-          visiblePdfCheckboxes.length === checkedVisiblePdfCheckboxes.length;
-
-        const globalSelectAllLabel = document.getElementById(
-          "globalSelectAllLabel"
-        );
-        if (globalSelectAllLabel) {
-          globalSelectAllLabel.textContent = `Selecionar todos os ${visiblePdfCheckboxes.length} PDFs`;
-        }
+        updateGlobalSelectAllState();
       } else {
         const folderPath = selectAllCheckbox.getAttribute("data-folder-path");
         if (!folderPath) return;
@@ -474,10 +527,14 @@ function updateSelectAllCheckboxes() {
         const checkedVisiblePdfCheckboxes = visiblePdfCheckboxes.filter(
           (checkbox) => checkbox.checked
         );
-
-        selectAllCheckbox.checked =
-          visiblePdfCheckboxes.length > 0 &&
+        
+        const allChecked = visiblePdfCheckboxes.length > 0 && 
           visiblePdfCheckboxes.length === checkedVisiblePdfCheckboxes.length;
+        
+        const someChecked = checkedVisiblePdfCheckboxes.length > 0;
+
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
 
         const selectAllLabel =
           selectAllCheckbox.parentElement.querySelector(".select-all-label");
@@ -488,149 +545,232 @@ function updateSelectAllCheckboxes() {
     });
 }
 
-document
-  .getElementById("zipInput")
-  .addEventListener("change", function (event) {
-    const file = event.target.files[0];
-    if (!file) return;
+document.getElementById("zipInput").setAttribute("multiple", "true");
 
-    const fileSizeInGB = file.size / (1024 * 1024 * 1024);
+document.getElementById("zipInput").addEventListener("change", function (event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+  
+  // Array para armazenar os arquivos a serem processados
+  const filesToProcess = [];
+  let totalSize = 0;
+  
+  // Verificar tamanho total dos arquivos selecionados
+  for (let i = 0; i < files.length; i++) {
+    totalSize += files[i].size;
+    filesToProcess.push(files[i]);
+  }
+  
+  const totalSizeInGB = totalSize / (1024 * 1024 * 1024);
+  
+  if (totalSizeInGB > 10) {
+    Swal.fire({
+      icon: "warning",
+      title: "Arquivos muito grandes",
+      text: `Os arquivos ZIP somam mais de 10GB e podem causar instabilidade no navegador.`,
+      showCancelButton: true,
+      confirmButtonText: "Continuar mesmo assim",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        processMultipleZipFiles(filesToProcess);
+      }
+    });
+  } else {
+    processMultipleZipFiles(filesToProcess);
+  }
+});
 
-    if (fileSizeInGB > 10) {
-      Swal.fire({
-        icon: "warning",
-        title: "Arquivo muito grande",
-        text: "O arquivo ZIP tem mais de 10GB e pode causar instabilidade no navegador.",
-        showCancelButton: true,
-        confirmButtonText: "Continuar mesmo assim",
-        cancelButtonText: "Cancelar",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          processZipFile(file);
-        }
-      });
-    } else {
-      processZipFile(file);
+function processMultipleZipFiles(files) {
+  if (files.length === 0) return;
+  
+  Swal.fire({
+    title: "Carregando ZIPs",
+    html: `Preparando ${files.length} arquivo(s) para processamento...`,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    },
+  });
+  
+  // Limpar o fileTree anterior se for a primeira execução
+  if (!window.hasProcessedFiles) {
+    document.getElementById("fileTree").innerHTML = "";
+    window.hasProcessedFiles = true;
+  }
+  
+  // Criar pastas principais para cada arquivo ZIP
+  const fileTree = document.getElementById("fileTree");
+  
+  // Processar arquivos um por um
+  processNextZipFile(files, 0, fileTree);
+}
+
+function processNextZipFile(files, index, fileTree) {
+  if (index >= files.length) {
+    Swal.close();
+    // Atualizar o controle global após processar todos os ZIPs
+    updateGlobalSelectAllControl();
+    return;
+  }
+  
+  const file = files[index];
+  const zipFolderName = file.name;
+  
+  // Atualizar mensagem do SweetAlert
+  Swal.update({
+    html: `Processando arquivo ${index + 1} de ${files.length}: ${zipFolderName}`,
+  });
+  
+  // Criar pasta principal para este arquivo ZIP
+  const mainFolder = document.createElement("div");
+  mainFolder.classList.add("folder");
+  
+  const toggleBtn = document.createElement("i");
+  toggleBtn.classList.add("fas", "fa-chevron-right", "toggle-btn");
+  toggleBtn.style.cursor = "pointer";
+  
+  const folderSpan = document.createElement("span");
+  folderSpan.innerHTML = `<i class="fas fa-folder"></i> ${zipFolderName}`;
+  
+  mainFolder.appendChild(toggleBtn);
+  mainFolder.appendChild(folderSpan);
+  
+  const subTree = document.createElement("div");
+  subTree.classList.add("sub-tree");
+  subTree.style.display = "none";
+  
+  toggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = subTree.style.display === "block";
+    subTree.style.display = isOpen ? "none" : "block";
+    toggleBtn.classList.toggle("fa-chevron-down", !isOpen);
+    toggleBtn.classList.toggle("fa-chevron-right", isOpen);
+  });
+  
+  mainFolder.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("toggle-btn")) {
+      const isOpen = subTree.style.display === "block";
+      subTree.style.display = isOpen ? "none" : "block";
+      toggleBtn.classList.toggle("fa-chevron-down", !isOpen);
+      toggleBtn.classList.toggle("fa-chevron-right", isOpen);
     }
   });
+  
+  fileTree.appendChild(mainFolder);
+  fileTree.appendChild(subTree);
+  
+  // Processar o arquivo ZIP
+  JSZip.loadAsync(file)
+    .then(async (zip) => {
+      await processZip(zip, subTree);
+      
+      // Processar o próximo arquivo
+      setTimeout(() => {
+        processNextZipFile(files, index + 1, fileTree);
+      }, 100);
+    })
+    .catch((error) => {
+      console.error(`Error loading ZIP ${zipFolderName}:`, error);
+      
+      // Mostrar mensagem de erro para este arquivo específico
+      const errorMessage = document.createElement("div");
+      errorMessage.classList.add("generic-file");
+      errorMessage.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ff3500;"></i> Erro ao processar: ${error.message}`;
+      subTree.appendChild(errorMessage);
+      
+      // Continuar com o próximo arquivo
+      setTimeout(() => {
+        processNextZipFile(files, index + 1, fileTree);
+      }, 100);
+    });
+}
 
-function processZipFile(file) {
-  const reader = new FileReader();
-  const fileTree = document.getElementById("fileTree");
+document.querySelector('.dropzone p').textContent = "Selecione um ou mais arquivos .zip em seu computador, para leitura.";
+
+// Atualizar downloadSelected para corrigir o tipo MIME dos PDFs ao baixar
+document.getElementById("downloadSelected").addEventListener("click", async () => {
+  const checkboxes = document.querySelectorAll(".pdf-checkbox:checked");
+  if (checkboxes.length === 0) return;
+
+  const totalFiles = checkboxes.length;
 
   Swal.fire({
-    title: "Carregando ZIP...",
-    html: "Por favor, aguarde enquanto os arquivos estão sendo processados.",
+    title: "Preparando Download...",
+    html: `Preparando ${totalFiles} arquivos para download...`,
     allowOutsideClick: false,
     didOpen: () => {
       Swal.showLoading();
     },
   });
 
-  JSZip.loadAsync(file)
-    .then(async (zip) => {
-      await processZip(zip, fileTree);
-      Swal.close();
-    })
-    .catch((error) => {
-      console.error("Error loading ZIP:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Erro ao processar o ZIP",
-        text: error.message,
-      });
+  try {
+    const zip = new JSZip();
+    let processedFiles = 0;
+
+    for (const checkbox of checkboxes) {
+      const fileElement = checkbox.closest(".pdf-file");
+      const fileData = fileElement.fileData;
+
+      const documentNumber = processedFiles + 1;
+      const newFileName = `Documento_${documentNumber}.pdf`;
+
+      try {
+        const blob = await fileData.async("blob");
+        // Corrigir o tipo de blob para PDF ao adicionar ao ZIP
+        const pdfBlobWithCorrectType = new Blob([blob], { type: 'application/pdf' });
+        zip.file(newFileName, pdfBlobWithCorrectType);
+
+        processedFiles++;
+        Swal.update({
+          html: `Preparando ${processedFiles} de ${totalFiles} arquivos...`,
+        });
+      } catch (error) {
+        console.error(`Error processing file:`, error);
+      }
+    }
+
+    Swal.update({
+      html: "Gerando arquivo ZIP...",
     });
-}
 
-document
-  .getElementById("downloadSelected")
-  .addEventListener("click", async () => {
-    const checkboxes = document.querySelectorAll(".pdf-checkbox:checked");
-    if (checkboxes.length === 0) return;
-
-    const totalFiles = checkboxes.length;
-
-    Swal.fire({
-      title: "Preparando Download...",
-      html: `Preparando ${totalFiles} arquivos para download...`,
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
+    const zipBlob = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: {
+        level: 5,
       },
     });
 
-    try {
-      const zip = new JSZip();
-      let processedFiles = 0;
+    const currentDate = new Date();
+    const dateString = `${currentDate.getFullYear()}-${(
+      currentDate.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}-${currentDate
+      .getDate()
+      .toString()
+      .padStart(2, "0")}`;
 
-      for (const checkbox of checkboxes) {
-        const fileElement = checkbox.closest(".pdf-file");
-        const fileData = fileElement.fileData;
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `PROSIPE_PDFs_${dateString}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
 
-        const documentNumber = processedFiles + 1;
-        const newFileName = `Documento_${documentNumber}.pdf`;
-
-        try {
-          const blob = await fileData.async("blob");
-          zip.file(newFileName, blob);
-
-          processedFiles++;
-          Swal.update({
-            html: `Preparando ${processedFiles} de ${totalFiles} arquivos...`,
-          });
-        } catch (error) {
-          console.error(`Error processing file:`, error);
-        }
-      }
-
-      Swal.update({
-        html: "Gerando arquivo ZIP...",
-      });
-
-      const zipBlob = await zip.generateAsync({
-        type: "blob",
-        compression: "DEFLATE",
-        compressionOptions: {
-          level: 5,
-        },
-      });
-
-      const currentDate = new Date();
-      const dateString = `${currentDate.getFullYear()}-${(
-        currentDate.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}-${currentDate
-        .getDate()
-        .toString()
-        .padStart(2, "0")}`;
-
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `PROSIPE_PDFs_${dateString}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      Swal.fire({
-        icon: "success",
-        title: "Download Concluído",
-        text: `${totalFiles} arquivos foram baixados com sucesso.`,
-      });
-    } catch (error) {
-      console.error("Error generating ZIP for download:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Erro ao gerar o ZIP",
-        text: error.message,
-      });
-    }
-  });
-
-document.addEventListener("change", function (e) {
-  if (e.target && e.target.classList.contains("pdf-checkbox")) {
-    updateDownloadButtonState();
-    updateSelectAllCheckboxes();
+    Swal.fire({
+      icon: "success",
+      title: "Download Concluído",
+      text: `${totalFiles} arquivos foram baixados com sucesso.`,
+    });
+  } catch (error) {
+    console.error("Error generating ZIP for download:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Erro ao gerar o ZIP",
+      text: error.message,
+    });
   }
 });
 
