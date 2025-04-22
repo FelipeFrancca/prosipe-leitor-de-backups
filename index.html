@@ -15,7 +15,7 @@
   </head>
   <body>
     <div class="appbar">
-      <img src="./assets//img/logo.png" />
+      <img src="./assets/img/logo.png" alt="PROSIPE Logo" />
       <div id="inputPesquisa" class="inputPesquisa">
         <input
           type="text"
@@ -38,6 +38,11 @@
         <p id="loadingMessage" class="loading">
           <i class="fas fa-spinner fa-spin"></i> Carregando arquivo, isso pode levar algum tempo...
         </p>
+        
+        <div class="progress-bar" id="progressBar" style="display: none;">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+        </div>
+        
         <button id="downloadSelected" disabled>Baixar PDFs Selecionados</button>
         <div id="fileTree" class="tree-view"></div>
       </div>
@@ -46,10 +51,22 @@
     <!-- Modal para exibir o PDF -->
     <div id="pdfModal">
       <div class="modal-content">
+        <h2 id="modalTitle"></h2>
         <span class="close" onclick="closeModal()">&times;</span>
         <iframe id="pdfViewer"></iframe>
       </div>
     </div>
+    
+    <!-- Template for select-all checkbox -->
+    <template id="selectAllTemplate">
+      <div class="folder-controls">
+        <div class="select-all-wrapper">
+          <input type="checkbox" class="select-all-checkbox">
+          <label>Selecionar todos os PDFs</label>
+        </div>
+      </div>
+    </template>
+    
     <script src="script.js"></script>
   </body>
 </html>
