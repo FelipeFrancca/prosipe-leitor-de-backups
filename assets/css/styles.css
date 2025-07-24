@@ -89,6 +89,52 @@ body {
   font-size: 28px;
 }
 
+.input-mode-selector {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.mode-toggle {
+  display: flex;
+  background: #f0f2f5;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #666;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.mode-btn:hover {
+  background: #e3e6f0;
+  color: #333;
+}
+
+.mode-btn.active {
+  background: #ff3500;
+  color: white;
+  box-shadow: 0 2px 5px rgba(255, 53, 0, 0.3);
+}
+
+.mode-btn i {
+  font-size: 16px;
+}
+
 .loading {
   display: none;
   text-align: center;
@@ -103,6 +149,86 @@ body {
 .loading i {
   margin-right: 10px;
   color: #ff3500;
+}
+
+.progress-container {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border-left: 4px solid #ff3500;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: #333;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff3500, #ff6b35);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 53, 0, 0.3);
+}
+
+.progress-details {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+#progressPercentage {
+  font-weight: bold;
+  color: #ff3500;
+}
+
+/* Estilos para progresso personalizado no SweetAlert2 */
+.swal-download-popup {
+  width: 400px !important;
+}
+
+.swal-progress-container {
+  padding: 20px 0;
+}
+
+.swal-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #333;
+}
+
+.swal-progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.swal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff3500, #ff6b35);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+  box-shadow: 0 0 10px rgba(255, 53, 0, 0.3);
 }
 
 .tree-view {
@@ -212,6 +338,7 @@ body {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   max-width: calc(100% - 10px);
   text-align: center;

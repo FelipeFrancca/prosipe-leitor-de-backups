@@ -29,18 +29,47 @@
       <div class="paper">
         <h1>Leitor de Backups</h1>
 
-        <label for="zipInput" class="dropzone">
+        <div class="input-mode-selector">
+          <div class="mode-toggle">
+            <button type="button" id="zipModeBtn" class="mode-btn active">
+              <i class="fas fa-file-archive"></i>
+              Arquivos ZIP
+            </button>
+            <button type="button" id="folderModeBtn" class="mode-btn">
+              <i class="fas fa-folder-open"></i>
+              Pastas
+            </button>
+          </div>
+        </div>
+
+        <label for="zipInput" class="dropzone" id="zipDropzone">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Selecione um ou mais arquivos .zip em seu computador, para leitura.</p>
           <input type="file" id="zipInput" accept=".zip" hidden multiple />
         </label>
 
+        <label for="folderInput" class="dropzone" id="folderDropzone" style="display: none;">
+          <i class="fas fa-folder-open"></i>
+          <p>Selecione uma ou mais pastas em seu computador, para leitura.</p>
+          <input type="file" id="folderInput" webkitdirectory multiple hidden />
+        </label>
+
         <p id="loadingMessage" class="loading">
-          <i class="fas fa-spinner fa-spin"></i> Carregando arquivo, isso pode levar algum tempo...
+          <i class="fas fa-spinner fa-spin"></i> 
+          <span id="loadingText">Carregando arquivo, isso pode levar algum tempo...</span>
         </p>
         
-        <div class="progress-bar" id="progressBar" style="display: none;">
-          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+        <div class="progress-container" id="progressContainer" style="display: none;">
+          <div class="progress-info">
+            <span id="progressText">Preparando...</span>
+            <span id="progressPercentage">0%</span>
+          </div>
+          <div class="progress-bar" id="progressBar">
+            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+          </div>
+          <div class="progress-details">
+            <span id="progressDetails">Inicializando processamento...</span>
+          </div>
         </div>
         
         <button id="downloadSelected" disabled>Baixar PDFs Selecionados</button>
